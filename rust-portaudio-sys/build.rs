@@ -152,22 +152,36 @@ mod platform {
 #[cfg(windows)]
 mod platform {
     use std::path::Path;
+    use std::process::Command;
+    use super::{run, err_to_panic};
 
-    const PORTAUDIO_DOWNLOAD_URL: &'static str = "http://www.portaudio.com";
+    #[cfg(target_arch = "x86_64")]
+    const PORTAUDIO_DOWNLOAD_URL: &'static str = "https://raw.githubusercontent.com/spatialaudio/portaudio-binaries/master/libportaudio64bit.dll";
+    #[cfg(target_arch = "x86_64")]
+    const PORTAUDIO_DLL: &'static str = "libportaudio64bit.dll";
 
-    fn print_lib_url() {
-        panic!("Don't know how to build portaudio on Windows yet. Sources and build instructions available at: {}", PORTAUDIO_DOWNLOAD_URL);
-    }
+    #[cfg(target_arch = "x86")]
+    const PORTAUDIO_DOWNLOAD_URL: &'static str = "https://raw.githubusercontent.com/spatialaudio/portaudio-binaries/master/libportaudio32bit.dll";
+    #[cfg(target_arch = "x86")]
+    const PORTAUDIO_DLL: &'static str = "libportaudio32bit.dll";
 
     pub fn download() {
-        print_lib_url();
+        run(Command::new("curl").arg(PORTAUDIO_DOWNLOAD_URL).arg("-O"));
     }
 
-    pub fn build(_: &Path) {
-        print_lib_url();
+    pub fn build(out_dir: &Path) {
+        let current_dir = err_to_panic(std::env::current_dir());
+        let dll_location = current_dir.join(PORTAUDIO_DLL);
+
+        let out_location = out_dir.join("portaudio.dll");
+
+        err_to_panic(std::fs::rename(dll_location, out_location));
     }
 
-    pub fn print_libs(_: &Path) {
-        print_lib_url();
+    pub fn print_libs(out_dir: &Path) {
+        // let out_str = out_dir.to_str().unwrap();
+        // println!("cargo:rustc-flags=-L native={} -l static={}", out_str, PORTAUDIO_DLL);
+
+        println!("cargo:rustc-link-search={}", out_dir.to_str().unwrap());
     }
 }
