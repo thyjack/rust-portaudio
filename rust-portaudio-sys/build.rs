@@ -26,7 +26,7 @@ use std::fmt::Display;
 use std::path::Path;
 use std::process::Command;
 
-#[cfg(all(unix, not(target_os = "linux")))]
+#[cfg(all(unix, not(target_os = "linux"), not(target_os = "windows")))]
 use unix_platform as platform;
 
 fn main() {
@@ -152,22 +152,45 @@ mod platform {
 #[cfg(windows)]
 mod platform {
     use std::path::Path;
+    use std::process::Command;
+    use std::env;
+    use super::{run, err_to_panic};
 
-    const PORTAUDIO_DOWNLOAD_URL: &'static str = "http://www.portaudio.com";
+    #[cfg(target_arch = "x86_64")]
+    const PORTAUDIO_DOWNLOAD_URL: &'static str = "https://anaconda.org/anaconda/portaudio/19.6.0/download/win-64/portaudio-19.6.0-he774522_4.tar.bz2";
+    #[cfg(target_arch = "x86_64")]
+    const PORTAUDIO_TAR: &'static str = "portaudio-19.6.0-he774522_4.tar.bz2";
 
-    fn print_lib_url() {
-        panic!("Don't know how to build portaudio on Windows yet. Sources and build instructions available at: {}", PORTAUDIO_DOWNLOAD_URL);
-    }
+    const PORTAUDIO_LIB_DIR: &'static str = "portaudio";
 
     pub fn download() {
-        print_lib_url();
+        run(Command::new("curl").arg(PORTAUDIO_DOWNLOAD_URL).arg("-O").arg("-s").arg("-L"));
     }
 
-    pub fn build(_: &Path) {
-        print_lib_url();
+    pub fn build(out_dir: &Path) {
+        // move tar to out dir
+        let current_dir = err_to_panic(std::env::current_dir());
+        let portaudio_location = out_dir.join(PORTAUDIO_TAR);
+
+        err_to_panic(std::fs::rename(
+            current_dir.join(PORTAUDIO_TAR), 
+            &portaudio_location));
+
+        // change dir to the portaudio folder
+        err_to_panic(env::set_current_dir(out_dir));
+        let current_dir = out_dir;
+
+        // untar portaudio sources
+        run(Command::new("tar").arg("-xjf").arg(current_dir.join(PORTAUDIO_TAR).to_str().unwrap()));
+
+        // move static lib to correct location
+        let _ = dbg!(std::fs::create_dir(current_dir.join(PORTAUDIO_LIB_DIR)));
+        err_to_panic(std::fs::rename(
+            current_dir.join("Library").join("lib").join("portaudio_static.lib"), 
+            &current_dir.join(PORTAUDIO_LIB_DIR).join("portaudio.lib")));
     }
 
-    pub fn print_libs(_: &Path) {
-        print_lib_url();
+    pub fn print_libs(out_dir: &Path) {
+        println!("cargo:rustc-link-search={}/{}", out_dir.to_str().unwrap(), PORTAUDIO_LIB_DIR);
     }
 }
