@@ -83,8 +83,8 @@ mod unix_platform {
 
     use super::{err_to_panic, run};
 
-    pub const PORTAUDIO_URL: &'static str = "http://www.portaudio.com/archives/pa_stable_v19_20140130.tgz";
-    pub const PORTAUDIO_TAR: &'static str = "pa_stable_v19_20140130.tgz";
+    pub const PORTAUDIO_URL: &'static str = "http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz";
+    pub const PORTAUDIO_TAR: &'static str = "pa_stable_v190700_20210406.tgz";
     pub const PORTAUDIO_FOLDER: &'static str = "portaudio";
 
     pub fn download() {
@@ -100,7 +100,7 @@ mod unix_platform {
 
         // run portaudio autoconf
         run(Command::new("./configure")
-            .args(&["--disable-shared", "--enable-static"]) // Only build static lib
+            .args(&["--disable-shared", "--enable-static", "--disable-mac-universal"]) // Only build static lib
             .args(&["--prefix", out_dir.to_str().unwrap()]) // Install on the outdir
             .arg("--with-pic")); // Build position-independent code (required by Rust)
 
@@ -120,7 +120,7 @@ mod unix_platform {
 
     pub fn print_libs(out_dir: &Path) {
         let out_str = out_dir.to_str().unwrap();
-        println!("cargo:rustc-flags=-L native={}/lib -l static=portaudio", out_str);
+        println!("cargo:rustc-flags=-L native={}/lib -l static=portaudio -l framework=CoreServices -l framework=CoreFoundation -l framework=AudioUnit -l framework=AudioToolbox -l framework=CoreAudio", out_str);
     }
 }
 
